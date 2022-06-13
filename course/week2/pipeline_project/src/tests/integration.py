@@ -56,13 +56,12 @@ class MNISTIntegrationTest(BaseTest):
     #
     # Pseudocode:
     # --
-    # loader = ...
-    # pass loader to trainer and call test
+    loader = self.get_dataloader(10)
+    trainer.test(system, loader, ckpt_path = 'best')
     #
     # Notes:
     # --
     # Nothing to return here
-    pass  # remove me
     # ================================
 
 

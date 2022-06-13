@@ -89,6 +89,7 @@ class DigitClassifierFlow(FlowSpec):
   @step
   def train_model(self):
     """Calls `fit` on the trainer."""
+    wandb.init()
 
     self.trainer.fit(self.system, self.dm)
 

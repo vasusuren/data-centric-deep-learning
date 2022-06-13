@@ -24,6 +24,8 @@ from torchvision import transforms
 
 from torch.utils.data import DataLoader, TensorDataset
 from src.tests.base import BaseTest
+import torchmetrics as m
+
 
 
 class GaussianNoise(object):
@@ -162,7 +164,7 @@ class MNISTDirectionalityTest(BaseTest):
       # 
       # Pseudocode:
       # --
-      # batch_metric = ...
+      batch_metric = torch.mean(preds_raw == preds_transformed, dtype=torch.float).item()
       # 
       # Type:
       # --
