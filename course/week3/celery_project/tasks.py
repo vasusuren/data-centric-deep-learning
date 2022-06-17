@@ -44,7 +44,7 @@ class PredictionTask(Task):
     # 
     # Pseudocode:
     # --
-    # system = ...
+    system = DigitClassifierSystem.load_from_checkpoint(MODEL_PATH)
     # 
     # Types:
     # --
@@ -75,6 +75,7 @@ def predict_single(self, data):
   """
   # image I/O can be very expensive. Put this in worker so we don't 
   # stall on it in FastAPI
+  system = self.get_system()
   im = Image.open(data)
   im: Image = im.convert('L')  # convert to grayscale
   im_transforms = transforms.Compose([
@@ -97,7 +98,7 @@ def predict_single(self, data):
     # 
     # Pseudocode:
     # --
-    # logits = ... (use system)
+    logits = system.forward(im)
     # 
     # Types:
     # --
@@ -117,7 +118,7 @@ def predict_single(self, data):
     # 
     # Pseudocode:
     # --
-    # probs = ...do something to logits...
+    probs = torch.softmax(logits, dim=1)
     # 
     # Types:
     # --
@@ -135,7 +136,7 @@ def predict_single(self, data):
   # why we need Celery.
   # 
   # Uncomment me when you are told to in the notes!
-  # time.sleep(5)
+  time.sleep(5)
   # ================================
 
   return results
