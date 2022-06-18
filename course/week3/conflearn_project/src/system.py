@@ -40,6 +40,38 @@ class ReviewDataModule(pl.LightningDataModule):
   def test_dataloader(self):
     return DataLoader(self.test_dataset, batch_size = self.batch_size)
 
+class RetraintestDataModule(pl.LightningDataModule):
+  r"""Data module wrapper around review datasets."""
+
+  def __init__(self, config, all_df):
+    super().__init__()
+
+    # This should remind you a lot of the MNISTDataModule
+    # but instead we load our custom dataset here.
+    dm = ReviewDataModule(config)
+    train_size = len(dm.train_dataset)
+    dev_size = len(dm.dev_dataset)
+    test_size = len(dm.test_dataset)
+    train_dataset, dev_dataset, test_dataset = torch.utils.data.random_split(all_df, [train_size, dev_size, test_size])
+
+
+    self.train_dataset = train_dataset
+    self.dev_dataset = dev_dataset
+    self.test_dataset = test_dataset
+    self.batch_size = config.train.optimizer.batch_size
+
+  def train_dataloader(self):
+    # Create a dataloader for train dataset. 
+    # Notice we set `shuffle=True` for the training dataset.
+    return DataLoader(self.train_dataset, batch_size = self.batch_size,
+      shuffle = True)
+
+  def val_dataloader(self):
+    return DataLoader(self.dev_dataset, batch_size = self.batch_size)
+
+  def test_dataloader(self):
+    return DataLoader(self.test_dataset, batch_size = self.batch_size)
+
 
 class SentimentClassifierSystem(pl.LightningModule):
   """A Pytorch Lightning system to train a model to classify sentiment of 

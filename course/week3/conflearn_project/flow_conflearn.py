@@ -18,7 +18,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from cleanlab.filter import find_label_issues
 from sklearn.model_selection import KFold
 
-from src.system import ReviewDataModule, SentimentClassifierSystem
+from src.system import ReviewDataModule, SentimentClassifierSystem, RetraintestDataModule
 from src.utils import load_config, to_json
 from src.consts import DATA_DIR
 
@@ -155,14 +155,36 @@ class TrainIdentifyReview(FlowSpec):
       # 
       # Pseudocode:
       # --
+      config = load_config(self.config_path)
+
+    # a data module wraps around training, dev, and test datasets
+      dm = ReviewDataModule(config)
       # Get train and test slices of X and y.
       # Convert to torch tensors.
+      X_train,y_train,X_test,y_test = torch.Tensor(X[train_index]), torch.Tensor(y[train_index]), torch.Tensor(X[test_index]), torch.Tensor(y[test_index])
+
       # Create train/test datasets using tensors.
+      train_dataset = TensorDataset(X_train,y_train)
+      test_dataset = TensorDataset(X_test,y_test)
+      print(f'The size of train and test. Train: {len(X_train)} and test: {len(X_test)} and batch size is {config.train.optimizer.batch_size}')
       # Create train/test data loaders from datasets.
+      train_dataloader = DataLoader(train_dataset, batch_size=config.train.optimizer.batch_size, shuffle=False)
+      test_dataloader = DataLoader(test_dataset, batch_size=config.train.optimizer.batch_size, shuffle=False)
       # Create `SentimentClassifierSystem`.
+      system = SentimentClassifierSystem(config)
       # Create `Trainer` and call `fit`.
+      trainer = Trainer(
+      max_epochs = config.train.optimizer.max_epochs)
+      trainer.fit(system, train_dataloader)
+      probs_t = trainer.predict(system, test_dataloader)
+      train_features, train_labels = next(iter(train_dataloader))
+      print(f"Feature batch shape: {train_features.size()}")
+      print(f"Labels batch shape: {train_labels.size()}")
       # Call `predict` on `Trainer` and the test data loader.
       # Convert probabilities back to numpy (make sure 1D).
+      probs_t = torch.cat(probs_t).squeeze()
+      print(f'The probabilities are {probs_t}')
+      probs_ = probs_t.numpy()
       # 
       # Types:
       # --
@@ -194,7 +216,7 @@ class TrainIdentifyReview(FlowSpec):
     """
     prob = np.asarray(self.all_df.prob)
     prob = np.stack([1 - prob, prob]).T
-  
+    labels = np.asarray(self.all_df.label)
     # rank label indices by issues
     ranked_label_issues = None
     
@@ -205,6 +227,11 @@ class TrainIdentifyReview(FlowSpec):
     # predicted probabilities. 
     # 
     # HINT: use cleanlab. See tutorial. 
+    ranked_label_issues = find_label_issues(
+    labels,
+    prob,
+    return_indices_ranked_by="self_confidence",
+)
     # 
     # Our solution is one function call.
     # 
@@ -291,9 +318,6 @@ class TrainIdentifyReview(FlowSpec):
   def retrain_retest(self):
     r"""Retrain without reviewing. Let's assume all the labels that 
     confidence learning suggested to flip are indeed erroneous."""
-    dm = ReviewDataModule(self.config)
-    train_size = len(dm.train_dataset)
-    dev_size = len(dm.dev_dataset)
 
     # ====================================
     # FILL ME OUT
@@ -304,15 +328,14 @@ class TrainIdentifyReview(FlowSpec):
     # 
     # Pseudocode:
     # --
-    # dm.train_dataset.data = training slice of self.all_df
-    # dm.dev_dataset.data = dev slice of self.all_df
-    # dm.test_dataset.data = test slice of self.all_df
-    # # ====================================
+    print(f'The dataframe all_df: {self.all_df.head()}')    # # ====================================
 
     # start from scratch
     system = SentimentClassifierSystem(self.config)
     trainer = Trainer(
       max_epochs = self.config.train.optimizer.max_epochs)
+    
+    dm = RetraintestDataModule(self.config, self.all_df)
 
     trainer.fit(system, dm)
     trainer.test(system, dm, ckpt_path = 'best')
