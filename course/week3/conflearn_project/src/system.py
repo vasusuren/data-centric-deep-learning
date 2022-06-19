@@ -52,12 +52,14 @@ class RetraintestDataModule(pl.LightningDataModule):
     train_size = len(dm.train_dataset)
     dev_size = len(dm.dev_dataset)
     test_size = len(dm.test_dataset)
-    train_dataset, dev_dataset, test_dataset = torch.utils.data.random_split(all_df, [train_size, dev_size, test_size])
+    
+    dm.train_dataset.data['label'] = self.all_df.loc[dm.train_dataset.data.index,'label']
+    dm.dev_dataset.data['label'] = self.all_df.loc[dm.dev_dataset.data.index,'label']
+    dm.test_dataset.data['label'] = self.all_df.loc[dm.test_dataset.data.index,'label']
 
-
-    self.train_dataset = train_dataset
-    self.dev_dataset = dev_dataset
-    self.test_dataset = test_dataset
+    self.train_dataset = train_tensor
+    self.dev_dataset = dev_tensor
+    self.test_dataset = test_tensor
     self.batch_size = config.train.optimizer.batch_size
 
   def train_dataloader(self):

@@ -328,14 +328,37 @@ class TrainIdentifyReview(FlowSpec):
     # 
     # Pseudocode:
     # --
-    print(f'The dataframe all_df: {self.all_df.head()}')    # # ====================================
+    #print(f'The dataframe all_df: {self.all_df.head()}')    # # ====================================
 
     # start from scratch
     system = SentimentClassifierSystem(self.config)
     trainer = Trainer(
       max_epochs = self.config.train.optimizer.max_epochs)
-    
-    dm = RetraintestDataModule(self.config, self.all_df)
+
+    dm = ReviewDataModule(self.config)
+
+    train_size = len(dm.train_dataset)
+    dev_size = len(dm.dev_dataset)
+    test_size = len(dm.test_dataset)
+
+    print(f'{["*"]*40} \n The size of all_df is {len(self.all_df)}')
+    print(f'{["*"]*40} \n The size of dm_dataset is {len(dm.train_dataset.data) + len(dm.dev_dataset.data) + len(dm.test_dataset.data)}')
+    print(f'{["*"]*40} \n The size of dm_dataset_train is {len(dm.train_dataset.data)}')
+    print(f'{["*"]*40} \n The size of dm_dataset_dev is {len(dm.dev_dataset.data)}')
+    print(f'{["*"]*40} \n The size of dm_dataset_test is {len(dm.test_dataset.data)}')
+
+    train_dataset = self.all_df.loc[:train_size-1,:]
+    dev_dataset = self.all_df.loc[train_size:train_size+dev_size-1,:]
+    test_dataset = self.all_df.loc[train_size+dev_size:,:]
+
+    train_dataset.index = dm.train_dataset.data.index
+    dev_dataset.index = dm.dev_dataset.data.index
+    test_dataset.index = dm.test_dataset.data.index
+
+    dm.train_dataset.data = train_dataset
+    dm.dev_dataset.data = dev_dataset
+    dm.test_dataset.data = test_dataset
+
 
     trainer.fit(system, dm)
     trainer.test(system, dm, ckpt_path = 'best')
